@@ -1,6 +1,5 @@
 ﻿# QuantBoard (个人量化投资看板)
 
-一个可上线演示、可写进简历的全栈项目 MVP：
 - 前端：Next.js App Router + TypeScript + Tailwind + shadcn/ui + Recharts
 - 后端：Next.js Route Handlers (`/app/api/*`)
 - 数据库：Prisma + SQLite（默认）/ PostgreSQL（可切换）
