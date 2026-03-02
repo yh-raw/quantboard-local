@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String            @id @default(cuid())
+  name          String?
+  email         String?           @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime          @default(now())
+  accounts      Account[]
+  sessions      Session[]
+  watchlistItem WatchlistItem[]
+  alerts        AlertSubscription[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionToken])
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  ticker    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ticker])
+  @@index([userId, createdAt])
+}
+
+model PriceBar {
+  id        String   @id @default(cuid())
+  ticker    String
+  timeframe String
+  ts        DateTime
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ticker, timeframe, ts])
+  @@index([ticker, timeframe, ts])
+}
+
+enum AlertChannel {
+  WEBHOOK
+  TELEGRAM
+  LOG
+}
+
+enum AlertSignalType {
+  MA_CROSS_UP
+  MA_CROSS_DOWN
+  BOLL_BREAK_UP
+  BOLL_BREAK_DOWN
+}
+
+enum SyncJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model AlertSubscription {
+  id         String          @id @default(cuid())
+  userId     String
+  ticker     String
+  channel    AlertChannel
+  target     String?
+  signalType AlertSignalType?
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries AlertDelivery[]
+
+  @@index([userId, isActive, ticker])
+}
+
+model AlertDelivery {
+  id             String            @id @default(cuid())
+  subscriptionId String
+  signalType     AlertSignalType
+  signalTs       DateTime
+  signalPrice    Float
+  status         String
+  message        String?
+  sentAt         DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+  subscription   AlertSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, signalType, signalTs])
+  @@index([subscriptionId, sentAt])
+}
+
+model SyncJob {
+  id          String        @id @default(cuid())
+  ticker      String
+  timeframe   String
+  days        Int
+  source      String
+  status      SyncJobStatus @default(QUEUED)
+  priority    Int           @default(100)
+  attempts    Int           @default(0)
+  maxAttempts Int           @default(3)
+  runAfter    DateTime      @default(now())
+  lockedAt    DateTime?
+  lockedBy    String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  lastError   String?
+  provider    String?
+  written     Int?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status, runAfter, priority, createdAt])
+  @@index([ticker, timeframe, createdAt])
+}
+
